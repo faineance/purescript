@@ -65,9 +65,9 @@ desugarImportsWithEnv externs modules = do
   externsEnv env ExternsFile{..} = do
     let members = Exports{..}
         ss = internalModuleSourceSpan "<Externs>"
-        env' = M.insert efModuleName (ss, nullImports, members) env
+        env' = M.insert efModuleName (ss, primImports, members) env
         fromEFImport (ExternsImport mn mt qmn) = (mn, [(Nothing, Just mt, qmn)])
-    imps <- foldM (resolveModuleImport env') nullImports (map fromEFImport efImports)
+    imps <- foldM (resolveModuleImport env') primImports (map fromEFImport efImports)
     exps <- resolveExports env' ss efModuleName imps members efExports
     return $ M.insert efModuleName (ss, imps, exps) env
     where
@@ -101,7 +101,7 @@ desugarImportsWithEnv externs modules = do
       Just m' -> throwError . errorMessage $ RedefinedModule mn [envModuleSourceSpan m', ss]
       Nothing -> do
         members <- findExportable m
-        let env' = M.insert mn (ss, nullImports, members) env
+        let env' = M.insert mn (ss, primImports, members) env
         (m', imps) <- resolveImports env' m
         exps <- maybe (return members) (resolveExports env' ss mn imps members) refs
         return (m' : ms, M.insert mn (ss, imps, exps) env)
@@ -356,11 +356,12 @@ renameInModule env imports (Module ss coms mn decls exps) =
       (Nothing, Just mn'') ->
         case M.lookup mn'' env of
           Nothing
-            | mn'' `S.member` importedVirtualModules imports -> throwUnknown
+            | mn'' `S.member` importedQualModules imports -> throwUnknown
             | otherwise ->
                 throwError . errorMessage .
                   UnknownName . Qualified Nothing $ ModName mn''
-          Just env' -> maybe throwUnknown return (getE (envModuleExports env') name)
+          Just _ ->
+            throwError . errorMessage $ UnimportedModule mn''
 
       -- If neither of the above cases are true then it's an undefined or
       -- unimported symbol.

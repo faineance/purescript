@@ -59,6 +59,7 @@ data SimpleErrorMessage
   | UnknownImportDataConstructor ModuleName (ProperName 'TypeName) (ProperName 'ConstructorName)
   | UnknownExport Name
   | UnknownExportDataConstructor (ProperName 'TypeName) (ProperName 'ConstructorName)
+  | UnimportedModule ModuleName
   | ScopeConflict Name [ModuleName]
   | ScopeShadowing Name (Maybe ModuleName) [ModuleName]
   | ConflictingTypeDecls (ProperName 'TypeName)
@@ -229,6 +230,7 @@ errorCode em = case unwrapErrorMessage em of
   UnknownImportDataConstructor{} -> "UnknownImportDataConstructor"
   UnknownExport{} -> "UnknownExport"
   UnknownExportDataConstructor{} -> "UnknownExportDataConstructor"
+  UnimportedModule{} -> "UnimportedModule"
   ScopeConflict{} -> "ScopeConflict"
   ScopeShadowing{} -> "ScopeShadowing"
   ConflictingTypeDecls{} -> "ConflictingTypeDecls"
@@ -582,6 +584,10 @@ prettyPrintSingleError full level showWiki e = flip evalState defaultUnknownMap 
       line $ "Cannot export unknown " ++ printName (Qualified Nothing name)
     renderSimpleErrorMessage (UnknownExportDataConstructor tcon dcon) =
       line $ "Cannot export data constructor " ++ runProperName dcon ++ " for type " ++ runProperName tcon ++ ", as it has not been declared."
+    renderSimpleErrorMessage (UnimportedModule mn) =
+      paras [ line $ "Unknown module " ++ runModuleName mn
+            , line "A module with this name does exist but has not been imported into the current file."
+            ]
     renderSimpleErrorMessage (ScopeConflict nm ms) =
       paras [ line $ "Conflicting definitions are in scope for " ++ printName (Qualified Nothing nm) ++ " from the following modules:"
             , indent $ paras $ map (line . runModuleName) ms
